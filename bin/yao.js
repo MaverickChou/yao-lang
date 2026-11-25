@@ -29,7 +29,7 @@ import { LEVELS, makeStepper, par, flippedLines } from '../src/game.js';
 const rawArgs = process.argv.slice(2);
 const flags = new Map();
 const args = [];
-const VALUE_FLAGS = new Set(['seed', 'o', 'machine']);
+const VALUE_FLAGS = new Set(['seed', 'o', 'machine', '法']);
 
 for (let i = 0; i < rawArgs.length; i++) {
   const a = rawArgs[i];
@@ -240,6 +240,7 @@ function usage() {
 占（M4）
   yao divine [字面量]       起卦并断；不给字面量则掷金钱卦
       --seed=N             固定种子，可复现
+      --法=金钱|大衍        起卦法（两法分布不同）
   yao corpus               辞库覆盖检查（450 条）
 
 游戏
@@ -524,7 +525,7 @@ function cmdDivine() {
   } else {
     seed = flags.has('seed') ? Number(flags.get('seed')) >>> 0
       : (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
-    x = cast({ seed, method: '金钱' });
+    x = cast({ seed, method: flags.get('法') ?? '金钱' });
   }
 
   const corpus = loadCorpus();

@@ -171,3 +171,44 @@ test('占卜与位运算一致：本/动/之', () => {
   const x = cast({ seed: 7 });
   assert.equal(zhi(x), ben(x) ^ (x >> 6 & 0x3f));
 });
+
+// ---------------------------------------------------------------- 大衍
+
+test('大衍：同种子同结果', () => {
+  for (const seed of [1, 42, 999]) {
+    assert.equal(cast({ seed, method: '大衍' }), cast({ seed, method: '大衍' }));
+  }
+});
+
+test('大衍：分布 3/16, 5/16, 7/16, 1/16', () => {
+  const N = 24000;
+  const cnt = { 6: 0, 7: 0, 8: 0, 9: 0 };
+  for (let s = 0; s < N; s++) {
+    const x = cast({ seed: s * 2654435761, method: '大衍' });
+    for (let p = 1; p <= 6; p++) {
+      const yang = (ben(x) >> (p - 1)) & 1;
+      const mov = ((x >> 6) >> (p - 1)) & 1;
+      cnt[yang ? (mov ? 9 : 7) : mov ? 6 : 8]++;
+    }
+  }
+  const total = N * 6;
+  const want = { 6: 1 / 16, 7: 5 / 16, 8: 7 / 16, 9: 3 / 16 };
+  for (const k of [6, 7, 8, 9]) {
+    const p = cnt[k] / total;
+    assert.ok(Math.abs(p - want[k]) < 0.02, ` 频率  偏离 `);
+  }
+});
+
+test('两法分布不同：同一种子不该给出同一卦', () => {
+  let differ = 0;
+  for (let s = 0; s < 40; s++) {
+    const a = cast({ seed: s });
+    const b = cast({ seed: s, method: '大衍' });
+    if (a !== b) differ++;
+  }
+  assert.ok(differ > 25, `40 个种子里只有  个不同，两法可能被合并了`);
+});
+
+test('未知起卦法要报错', () => {
+  assert.throws(() => cast({ seed: 1, method: '蓍草' }), /未知起卦法/);
+});

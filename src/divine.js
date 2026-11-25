@@ -39,28 +39,51 @@ function rng(seed) {
 }
 
 /**
- * 起卦。金钱卦：每爻掷三枚，记背面数 k，爻 = 6 + k。
- * 分布 P(6)=1/8, P(7)=3/8, P(8)=3/8, P(9)=1/8。
- * @param {{seed?: number, method?: '金钱'}} [opts]
+ * 起卦。
+ *
+ * 金钱卦：每爻掷三枚，记背面数 k，爻 = 6 + k。
+ *   P(6)=1/8, P(7)=3/8, P(8)=3/8, P(9)=1/8
+ *
+ * 大衍筮法：按朱熹《筮仪》的标准分布直接抽样。
+ *   P(9 老阳)=3/16, P(7 少阳)=5/16, P(8 少阴)=7/16, P(6 老阴)=1/16
+ *   注：这里**没有**模拟完整的十八变过程（分二、挂一、揲四、归奇），
+ *   只按该过程的理论分布抽样。两法分布不同，禁止合并。
+ *
+ * @param {{seed?: number, method?: '金钱'|'大衍'}} [opts]
  * @returns {number} 12 位变
  */
 export function cast(opts = {}) {
   const { seed = 1, method = '金钱' } = opts;
-  if (method !== '金钱') {
-    throw new Error(`v0.1 只实现了金钱卦，收到 "${method}"`);
+  if (method !== '金钱' && method !== '大衍') {
+    throw new Error(`未知起卦法 "${method}"，只支持 金钱 / 大衍`);
   }
 
   const rand = rng(seed);
   let b = 0;
   let d = 0;
+
   for (let p = 1; p <= 6; p++) {
-    let back = 0;
-    for (let coin = 0; coin < 3; coin++) if (rand() < 0.5) back++;
-    const v = 6 + back; // 6 老阴 / 7 少阳 / 8 少阴 / 9 老阳
+    const v = method === '金钱' ? drawCoins(rand) : drawDayan(rand);
     if (v === 7 || v === 9) b |= 1 << (p - 1);
     if (v === 6 || v === 9) d |= 1 << (p - 1);
   }
   return bian(b, d);
+}
+
+/** 金钱卦：三枚，背面数 k，爻 = 6 + k */
+function drawCoins(rand) {
+  let back = 0;
+  for (let coin = 0; coin < 3; coin++) if (rand() < 0.5) back++;
+  return 6 + back;
+}
+
+/** 大衍：3/16 老阳、5/16 少阳、7/16 少阴、1/16 老阴 */
+function drawDayan(rand) {
+  const r = Math.floor(rand() * 16);
+  if (r < 3) return 9;
+  if (r < 8) return 7;
+  if (r < 15) return 8;
+  return 6;
 }
 
 // ---------------------------------------------------------------- 爻题
