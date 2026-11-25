@@ -1,0 +1,32 @@
+﻿# 本地工具链（不入库）
+/.tools/
+# 爻 (Yao) —— 通用忽略规则
+# 生成物
+/data/*.generated.json
+
+# Rust
+/target/
+**/*.rs.bk
+# 注意：Cargo.lock 对二进制 crate 应当提交，不要忽略。
+
+# Node / 前端
+node_modules/
+dist/
+.pnpm-store/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 本地构建产物
+*.exe
+*.o
+*.wasm
+/build/

@@ -1,0 +1,32 @@
+{
+  "name": "yao",
+  "version": "0.1.0",
+  "description": "爻 —— 一门把状态机编译成 C 的 6 位语言。六十四卦，正好是 6 个比特。",
+  "type": "module",
+  "bin": {
+    "yao": "./bin/yao.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "start": "node bin/yao.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "data",
+    "SPEC.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "yao",
+    "hexagram",
+    "state machine",
+    "esolang",
+    "i-ching",
+    "compiler"
+  ],
+  "license": "(MIT OR Apache-2.0)"
+}

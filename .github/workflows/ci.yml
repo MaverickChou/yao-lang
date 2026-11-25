@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 卦表自校验
+        run: python tools/gen_hexagrams.py --check
+
+      - name: 辞库结构与覆盖
+        run: python tools/build_corpus.py --check
+
+      - name: 生成物与源数据一致
+        run: |
+          python tools/gen_gua_jing.py
+          python tools/gen_yao_zhen.py
+          python tools/build_corpus.py
+          git diff --exit-code examples/ data/corpus.json
+
+      - name: 测试（含 C 轨迹等价）
+        run: node --test
+
+      - name: C 后端零警告编译
+        run: |
+          node bin/yao.js build examples/gua-jing/gua_jing.yao --main -o /tmp/gua.c
+          gcc -std=c99 -Wall -Wextra -Werror /tmp/gua.c -o /tmp/gua
+          printf '1 1\n2 2\nq\n' | /tmp/gua
+
+      - name: 地牢验证
+        run: node bin/yao.js check examples/gua-jing/gua_jing.yao --strict
+
+      - name: 爻阵验证
+        run: node bin/yao.js check examples/yao-zhen/yao_zhen.yao --strict
