@@ -181,7 +181,12 @@ int main(int argc, char **argv)
       switch (g_actions[k]) {
         case 1:
           sock = tcp_connect(host, port);
-          if (sock == BAD_SOCK) { what = "连接失败"; break; }
+          if (sock == BAD_SOCK) {
+            /* 连不上也算断线，否则机器会卡在「连接中」*/
+            what = "连接失败";
+            yao_step(&s, EV_DOWN, 0);
+            break;
+          }
           mqtt_connect_pkt(sock, "yao-demo");
           what = "发 CONNECT";
           break;
