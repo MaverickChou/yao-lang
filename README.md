@@ -460,6 +460,16 @@ gcc -std=c99 -Wall -Wextra -Werror traffic.c host.c -o traffic
 
 机器只知道一个 6 位数；「哪几位是灯」是宿主的解释。这是 SPEC §10 定下的分工。
 
+## 用爻写的东西
+
+- **[爻 · 算](https://github.com/MaverickChou/yao-calculator)**（[在线玩](https://maverickchou.github.io/yao-calculator/)）——
+  一台科学计算器的输入状态机。7 个相位放低 6 位，括号深度 0–63 放进 `动`，
+  于是 `7 × 64` 种组合只需要 7 组规则，深度以位运算的形式在目标里流动。
+  浮点、对数、微积分留在宿主。非法按键的写法就是「不写规则」。
+
+  > 同作者，**不是第三方采用**。列在这里是当「6 位怎么掰开用」的例子，
+  > 不是背书——这个项目仍然没有外部使用者。
+
 ## 路线图
 
 
