@@ -2,6 +2,8 @@
 
 **一门把状态机编译成 C 的 6 位语言。六十四卦，正好是 6 个比特。**
 
+[**网页版**](https://maverickchou.github.io/yao-lang/)　·　[**它写的实例：爻 · 算**](https://github.com/MaverickChou/yao-calculator)（[在线玩](https://maverickchou.github.io/yao-calculator/)）　·　[使用手册](docs/GUIDE.md)
+
 > [!WARNING]
 > **辞库是草案。** `data/corpus.txt` 的 450 条卦辞爻辞（通行本）尚未逐字校对纸本，
 > 可能有错字或句读出入。结构已机器校验，文本没有。
