@@ -395,3 +395,31 @@ test('没有 印 的机器不引入 yao_sink', () => {
   const c = emitC(buildIr(parse(TURNSTILE)));
   assert.ok(!c.includes('yao_sink'));
 });
+
+test('参数缺失时给出可照抄的写法', () => {
+  const src = `
+机 参 {
+  事 走(位 n)
+  态 甲 = 坤
+  转 甲 走 -> 变(本, 0)
+  起 甲
+}`;
+  const m = machine(src);
+  const r = m.step('走', 0);
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /需要参数/);
+  assert.match(r.reason, /写成 "走:1"/);
+});
+
+test('参数越界时说明范围', () => {
+  const src = `
+机 参2 {
+  事 走(位 n)
+  态 甲 = 坤
+  转 甲 走 -> 变(本, 0)
+  起 甲
+}`;
+  const r = machine(src).step('走', 9);
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /9 越界，应为 1\.\.6/);
+});
