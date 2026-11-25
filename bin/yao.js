@@ -475,13 +475,19 @@ function cmdCheck() {
   L.push(row('态可达', `${a.reachableDeclared} / ${a.declaredCount}`));
   L.push(row('死态', `${a.deadStates.length}`));
   L.push(row('未定义转移', `${a.undefined.count} / ${undefinedTotal}（态 × 事件）`));
-  L.push(row('强连通', a.stronglyConnected
-    ? `是（1 个分量，${a.scc.largest} 个状态）`
-    : `否（${a.scc.count} 个分量，最大 ${a.scc.largest}）`));
-  L.push(row('图直径', !a.stronglyConnected
-    ? '—（图非强连通）'
-    : (a.diameter === null ? '—（分量过大，已跳过）' : `${a.diameter} 步`)));
-  L.push(row('最远的态', `${maxName}（${maxD} 步）`));
+  if (a.grouped) {
+    L.push(row('状态空间', `64^${ir.components.length} = ${a.stateSpace}`));
+    L.push(row('强连通', '—（组机不计算）'));
+    L.push(row('图直径', '—（组机不计算）'));
+  } else {
+    L.push(row('强连通', a.stronglyConnected
+      ? `是（1 个分量，${a.scc.largest} 个状态）`
+      : `否（${a.scc.count} 个分量，最大 ${a.scc.largest}）`));
+    L.push(row('图直径', !a.stronglyConnected
+      ? '—（图非强连通）'
+      : (a.diameter === null ? '—（分量过大，已跳过）' : `${a.diameter} 步`)));
+    L.push(row('最远的态', `${maxName}（${maxD} 步）`));
+  }
   L.push(row('耗时', `${ms} ms`));
 
   if (a.unreachableStates.length) {
@@ -492,7 +498,7 @@ function cmdCheck() {
     L.push('');
     L.push(`  ${c.yellow('Y0204')} 死态：` + a.deadStates.slice(0, 8).map(stateName).join(' '));
   }
-  if (a.undefined.count) {
+  if (a.undefined.count && a.undefined.sample.length) {
     L.push('');
     L.push(`  ${c.dim('未定义转移样例：')}`);
     for (const u of a.undefined.sample.slice(0, 6)) {

@@ -55,8 +55,18 @@ class Parser {
     throw new ParseError(`期望 ${what ?? value ?? type}，得到 "${t.text || t.type}"`, t);
   }
 
-  /** 名字位置：ident 或卦名字面量 */
+  /** 名字位置：ident 或卦名字面量；`组` 里可用 `组件.成员` */
   parseName(what) {
+    const first = this.parseSimpleName(what);
+    if (this.at('punct', '.')) {
+      this.i++;
+      const second = this.parseSimpleName(`${what}的成员`);
+      return `${first}.${second}`;
+    }
+    return first;
+  }
+
+  parseSimpleName(what) {
     const t = this.peek();
     if (t.type === 'ident') { this.i++; return t.value; }
     if (t.type === 'bian') {
@@ -78,13 +88,14 @@ class Parser {
 
     const events = [];
     const states = [];
+    const groups = [];
     const rules = [];
-    let start = null;
 
     while (!this.at('kw', '起')) {
       if (this.at('eof')) throw new ParseError('机器定义没有闭合：缺少 `起`', this.peek());
       if (this.at('kw', '事')) { events.push(this.parseEvent()); continue; }
       if (this.at('kw', '态')) { states.push(this.parseState()); continue; }
+      if (this.at('kw', '组')) { groups.push(this.parseGroup()); continue; }
       if (this.at('kw', '转')) { rules.push(this.parseRule()); continue; }
       const t = this.peek();
       if (t.type === 'punct' && t.value === '}') {
@@ -94,11 +105,35 @@ class Parser {
     }
 
     this.expect('kw', '起');
-    start = this.parseName('起始态');
+    const starts = [this.parseName('起始态')];
+    // 组 机器要给每个组件一个起点，用逗号或空格分隔
+    while (this.at('punct', ',') || this.at('ident') || this.at('bian')) {
+      this.eat('punct', ',');
+      starts.push(this.parseName('起始态'));
+    }
     this.expect('punct', '}');
     this.expect('eof', undefined, '文件结束');
 
-    return { type: 'machine', name: machineName, events, states, rules, start };
+    return { type: 'machine', name: machineName, events, states, groups, rules, starts };
+  }
+
+  /** 组 名 { 成员 = 表达式 ... } */
+  parseGroup() {
+    const tok = this.expect('kw', '组');
+    const name = this.parseSimpleName('组名');
+    this.expect('punct', '{');
+
+    const members = [];
+    while (!this.at('punct', '}')) {
+      if (this.at('eof')) throw new ParseError(`组 "${name}" 没有闭合`, this.peek());
+      const mTok = this.peek();
+      const member = this.parseSimpleName('成员名');
+      this.expect('punct', '=');
+      members.push({ name: member, value: this.parseExpr(), tok: mTok });
+    }
+    this.expect('punct', '}');
+    if (!members.length) throw new ParseError(`组 "${name}" 至少要有一个成员`, tok);
+    return { name, members, tok };
   }
 
   parseEvent() {
@@ -272,7 +307,16 @@ class Parser {
       return { t: 'call', name: t.value, args, tok: t };
     }
 
-    if (t.type === 'ident') { this.i++; return { t: 'var', name: t.value, tok: t }; }
+    if (t.type === 'ident') {
+      this.i++;
+      // 组 的成员引用：组件.成员
+      if (this.at('punct', '.')) {
+        this.i++;
+        const member = this.parseSimpleName('成员名');
+        return { t: 'var', name: `${t.value}.${member}`, tok: t };
+      }
+      return { t: 'var', name: t.value, tok: t };
+    }
 
     throw new ParseError(`无法解析表达式：得到 "${t.text || t.type}"`, t);
   }

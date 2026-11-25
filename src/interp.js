@@ -15,20 +15,30 @@ export class Machine {
   constructor(ir, opts = {}) {
     this.ir = ir;
     this.sink = typeof opts.sink === 'function' ? opts.sink : null;
-    this.groups = groupRules(ir);
-    this.state = ir.start.value;
     this.stepCount = 0;
+
+    if (ir.grouped) {
+      this.states = ir.startVals.slice();
+      this.byEvent = new Map(ir.rules.map((r) => [r.event, r]));
+    } else {
+      this.groups = groupRules(ir);
+      this.state = ir.start.value;
+    }
   }
 
   get ben() { return ben(this.state); }
+
+  /** 组机器：某个组件当前的卦 */
+  compBen(i) { return ben(this.states[i]); }
 
   /**
    * 推进一步。
    * @param {string} event
    * @param {number} [arg]
-   * @returns {{ok:boolean, from:number, to:number, reason?:string}}
    */
   step(event, arg = 0) {
+    if (this.ir.grouped) return this.stepGrouped(event, arg);
+
     const from = this.state;
     const g = this.groups.get(event);
     if (!g) return { ok: false, from, to: from, reason: `未声明的事件 "${event}"` };
@@ -63,6 +73,51 @@ export class Machine {
     this.state = to;
     this.stepCount++;
     return { ok: true, from, to };
+  }
+
+  /**
+   * 组机器：事件在编译期已唯一绑定到某个组件，运行期只动那一个。
+   */
+  stepGrouped(event, arg = 0) {
+    const rule = this.byEvent.get(event);
+    const snap = this.states.slice();
+    if (!rule) {
+      return { ok: false, from: snap, to: snap, reason: `未声明的事件 "${event}"` };
+    }
+
+    const comp = rule.comp;
+    const cur = this.states[comp];
+    if (ben(cur) !== rule.fromBen) {
+      return { ok: false, from: snap, to: snap, reason: '此路不通' };
+    }
+    if (rule.param && (arg < 1 || arg > 6)) {
+      return { ok: false, from: snap, to: snap, reason: `参数 ${arg} 越界（应为 1..6）` };
+    }
+
+    let to;
+    try {
+      to = evalAst(rule.target, {
+        ben: ben(cur),
+        state: cur,
+        params: rule.param ? { [rule.param]: arg } : {},
+        consts: this.ir.consts,
+        sink: this.sink,
+      });
+    } catch (err) {
+      if (err instanceof EvalAstError) {
+        return { ok: false, from: snap, to: snap, reason: err.message };
+      }
+      throw err;
+    }
+
+    if (!Number.isInteger(to) || to < 0 || to > 0x3f) {
+      return { ok: false, from: snap, to: snap, reason: `组成员只能取 0..63，得到 ${to}` };
+    }
+
+    this.states[comp] = to;
+    this.stepCount++;
+    const after = this.states.slice();
+    return { ok: true, from: snap, to: after, comp };
   }
 
   describe() {

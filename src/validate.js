@@ -23,6 +23,8 @@ export const STATE_SPACE = 4096;
  * @param {{maxSccForDiameter?: number}} [opts]
  */
 export function analyze(ir, opts = {}) {
+  if (ir.grouped) return analyzeGrouped(ir);
+
   const maxSccForDiameter = opts.maxSccForDiameter ?? 1024;
   const groups = groupRules(ir);
   const events = ir.events;
@@ -231,4 +233,116 @@ function bfsDist(adj, src, allowed) {
     }
   }
   return dist;
+}
+
+/**
+ * 组机器的穷举。
+ *
+ * 状态空间是 64^N（成员是卦，6 位）。N=2 是 4096，N=3 是 262144，都还在可穷举范围；
+ * N≥4 时按 §9.3 的边界只做有界检验（这里直接拒绝，不假装能算）。
+ */
+function analyzeGrouped(ir) {
+  const N = ir.components.length;
+  if (N >= 4) {
+    throw new Error(`组机器有 ${N} 个组件（64^${N} 个状态），超出穷举边界；请拆成更小的机器`);
+  }
+
+  const pow = (i) => 64 ** i;
+  const enc = (a) => a.reduce((acc, v, i) => acc + v * pow(i), 0);
+  const dec = (k) => Array.from({ length: N }, (_, i) => Math.floor(k / pow(i)) % 64);
+  const byEvent = new Map(ir.rules.map((r) => [r.event, r]));
+
+  const startKey = enc(ir.startVals);
+  const visited = new Set([startKey]);
+  const queue = [startKey];
+  const adj = new Map();
+  const undef = new Set();
+
+  while (queue.length) {
+    const k = queue.shift();
+    const st = dec(k);
+    const outs = new Set();
+
+    for (const ev of ir.events) {
+      const rule = byEvent.get(ev.name);
+      const args = ev.param ? [1, 2, 3, 4, 5, 6] : [0];
+
+      let fired = false;
+      if (rule && ben(st[rule.comp]) === rule.fromBen) {
+        for (const arg of args) {
+          let to;
+          try {
+            to = evalAst(rule.target, {
+              ben: ben(st[rule.comp]),
+              state: st[rule.comp],
+              params: ev.param ? { [ev.param]: arg } : {},
+              consts: ir.consts,
+            });
+          } catch {
+            undef.add(`${k}:${ev.name}`);
+            continue;
+          }
+          if (!Number.isInteger(to) || to < 0 || to > 0x3f) {
+            undef.add(`${k}:${ev.name}`);
+            continue;
+          }
+          fired = true;
+          const next = st.slice();
+          next[rule.comp] = to;
+          const nk = enc(next);
+          outs.add(nk);
+          if (!visited.has(nk)) { visited.add(nk); queue.push(nk); }
+        }
+      }
+      if (!fired) undef.add(`${k}:${ev.name}`);
+    }
+    adj.set(k, outs);
+  }
+
+  const reachable = [...visited];
+  const seenMember = new Set();
+  for (const k of reachable) {
+    const st = dec(k);
+    st.forEach((v, i) => seenMember.add(`${ir.components[i].name}.${v}`));
+  }
+
+  const unreachableStates = [...ir.states.values()].filter(
+    (s) => !seenMember.has(`${ir.components[s.comp].name}.${s.value}`)
+  );
+  const deadStates = reachable.filter((k) => (adj.get(k)?.size ?? 0) === 0);
+
+  // 距离（从起点）
+  const distances = new Map();
+  distances.set(ir.start.ben ?? 0, 0);
+  {
+    const seen = new Set([startKey]);
+    const q = [[startKey, 0]];
+    while (q.length) {
+      const [k, d] = q.shift();
+      for (const nk of adj.get(k) ?? []) {
+        if (seen.has(nk)) continue;
+        seen.add(nk);
+        q.push([nk, d + 1]);
+      }
+    }
+  }
+
+  return {
+    grouped: true,
+    stateSpace: 64 ** N,
+    reachableCount: reachable.length,
+    reachable,
+    declaredCount: ir.states.size,
+    reachableDeclared: ir.states.size - unreachableStates.length,
+    unreachableStates,
+    deadStates,
+    undefined: { count: undef.size, sample: [] },
+    scc: { count: 0, largest: reachable.length },
+    stronglyConnected: false,
+    diameter: null,
+    diameterPair: null,
+    distances: new Map(),
+    compOf: new Map(),
+    comps: [],
+  };
 }

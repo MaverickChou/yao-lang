@@ -39,10 +39,10 @@ function emit(e, ctx) {
         : { code: hex(e.v, 2), wide: false };
 
     case 'ben':
-      return { code: 'YAO_BEN(s)', wide: false };
+      return { code: `YAO_BEN(${ctx.state})`, wide: false };
 
     case 'state':
-      return { code: 's', wide: true };
+      return { code: ctx.state, wide: true };
 
     case 'var': {
       const p = ctx.params.get(e.name);
@@ -200,9 +200,18 @@ export function emitHeader(ir) {
   lines.push('#define YAO_DONG(s) ((uint16_t)(((s) >> 6) & 0x3Fu))');
   lines.push('#define YAO_ZHI(s)  ((uint16_t)(YAO_BEN(s) ^ YAO_DONG(s)))');
   lines.push('');
-  lines.push('/* 起始状态 */');
-  lines.push(`#define YAO_START ${hex(ir.start.value, 4)}  /* ${ir.start.name} */`);
-  lines.push('');
+  if (ir.grouped) {
+    lines.push(`#define YAO_COMPONENTS ${ir.components.length}u`);
+    ir.startVals.forEach((v, i) => {
+      lines.push(`#define YAO_START_${i} ${hex(v, 2)}  /* ${ir.components[i].name} */`);
+    });
+    lines.push(`#define YAO_START ${hex(ir.startVals[0], 2)}u`);
+    lines.push('');
+  } else {
+    lines.push('/* 起始状态 */');
+    lines.push(`#define YAO_START ${hex(ir.start.value, 4)}  /* ${ir.start.name} */`);
+    lines.push('');
+  }
   lines.push('/* 事件号：按 `事` 的声明顺序，从 1 开始 */');
   ir.events.forEach((ev, i) => {
     lines.push(`#define EV_${i} ${i + 1}u  /* ${ev.name}${ev.param ? '(' + ev.param + ')' : ''} */`);
@@ -233,6 +242,8 @@ export function emitHeader(ir) {
  * @returns {string}
  */
 export function emitC(ir, opts = {}) {
+  if (ir.grouped) return emitGroupedC(ir, opts);
+
   const groups = groupRules(ir);
   const stateList = [...ir.states.values()];
   const lines = [];
@@ -241,6 +252,7 @@ export function emitC(ir, opts = {}) {
   const ctxFor = (param) => ({
     params: param ? new Map([[param, 'p0']]) : new Map(),
     consts: new Map(Object.entries(ir.consts ?? {})),
+    state: 's',
     used: usedFuncs,
   });
 
@@ -399,3 +411,108 @@ int main(void) {
   return 0;
 }
 `;
+
+/**
+ * 组机器的 C 后端。
+ *
+ * 状态是 `uint16_t s[N]`，一个组件一个。事件在编译期已绑定到组件，
+ * 所以运行期只需要 `switch(ev)` → `switch(YAO_BEN(s[c]))`。
+ */
+function emitGroupedC(ir, opts = {}) {
+  const N = ir.components.length;
+  const usedFuncs = new Set();
+  const ctxFor = (param, comp) => ({
+    params: param ? new Map([[param, 'p0']]) : new Map(),
+    consts: new Map(Object.entries(ir.consts ?? {})),
+    state: `s[${comp}]`,
+    used: usedFuncs,
+  });
+
+  const byEvent = new Map(ir.rules.map((r) => [r.event, r]));
+  const body = [];
+  let usesSink = false;
+
+  ir.events.forEach((ev, i) => {
+    const rule = byEvent.get(ev.name);
+    if (!rule) {
+      body.push(`  case EV_${i}:  /* ${ev.name}：无规则 */\n    return 1;`);
+      return;
+    }
+
+    const ctx = ctxFor(ev.param, rule.comp);
+    const t = rule.target;
+    let stmts;
+
+    if (t.t === 'block') {
+      usesSink = true;
+      const pre = t.effects
+        .map((e) => `      if (yao_sink) yao_sink(${emit(e, ctx).code});`)
+        .join('\n');
+      stmts = `${pre}\n      s[${rule.comp}] = ${emit(t.target, ctx).code};\n      return 0;`;
+    } else {
+      stmts = `      s[${rule.comp}] = ${emit(t, ctx).code};\n      return 0;`;
+    }
+
+    body.push(
+      `  case EV_${i}: {  /* ${ev.name} → 组件 ${ir.components[rule.comp].name} */\n` +
+        (ev.param ? '' : '    (void)p0;\n') +
+        `    switch (YAO_BEN(s[${rule.comp}])) {\n` +
+        `    case ${hex(rule.fromBen, 2)}:  /* ${rule.from} */\n` +
+        `${stmts}\n` +
+        `    default: return 1;\n` +
+        `    }\n` +
+        `  }`
+    );
+  });
+
+  const lines = [];
+  lines.push('/* 由 yao 生成，请勿手工修改。 */');
+  lines.push(`/* machine: ${ir.name}   组机：${N} 个组件   状态空间 64^${N} */`);
+  lines.push('#include <stdint.h>');
+  lines.push('');
+  lines.push('#define YAO_NONE 0xFFFFu');
+  lines.push('#define YAO_BEN(s)  ((uint16_t)((s) & 0x3Fu))');
+  lines.push('#define YAO_DONG(s) ((uint16_t)(((s) >> 6) & 0x3Fu))');
+  lines.push('#define YAO_ZHI(s)  ((uint16_t)(YAO_BEN(s) ^ YAO_DONG(s)))');
+  lines.push(`#define YAO_COMPONENTS ${N}u`);
+  lines.push('');
+  lines.push('/* 各组件起点 */');
+  ir.startVals.forEach((v, i) => {
+    lines.push(`#define YAO_START_${i} ${hex(v, 2)}  /* ${ir.components[i].name} */`);
+  });
+  lines.push('');
+  lines.push(`#define YAO_START ${hex(ir.startVals[0], 2)}u  /* 组件 0，兼容单机接口 */`);
+  lines.push('');
+  lines.push('/* 事件 */');
+  ir.events.forEach((ev, i) => {
+    lines.push(`#define EV_${i} ${i + 1}u  /* ${ev.name}${ev.param ? '(' + ev.param + ')' : ''} */`);
+  });
+  lines.push(`#define YAO_EVENT_COUNT ${ir.events.length}u`);
+  lines.push('');
+
+  if (usesSink) {
+    lines.push('/* 输出汇：宿主可赋值；为空指针时什么也不做。它不参与状态计算。 */');
+    lines.push('void (*yao_sink)(uint16_t) = 0;');
+    lines.push('');
+  }
+
+  if (usedFuncs.size) {
+    lines.push('/* 运行时 */');
+    for (const k of usedFuncs) lines.push(FUNC_DEF[k]);
+    lines.push('');
+  }
+
+  lines.push('void yao_init(uint16_t *s) {');
+  ir.startVals.forEach((v, i) => lines.push(`  s[${i}] = ${hex(v, 2)};`));
+  lines.push('}');
+  lines.push('');
+  lines.push('/* 返回 0 = 已转移，1 = 该事件在此态下无定义 */');
+  lines.push('int yao_step(uint16_t *s, uint16_t ev, uint8_t p0) {');
+  lines.push('  switch (ev) {');
+  lines.push(body.join('\n\n'));
+  lines.push('  }');
+  lines.push('  return 1;');
+  lines.push('}');
+
+  return lines.join('\n') + '\n';
+}
