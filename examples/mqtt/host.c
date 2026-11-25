@@ -31,6 +31,8 @@ typedef SOCKET sock_t;
 #  define sock_len int
 #else
 #  include <sys/socket.h>
+#  include <sys/select.h>
+#  include <time.h>
 #  include <netinet/in.h>
 #  include <arpa/inet.h>
 #  include <netdb.h>
