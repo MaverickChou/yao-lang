@@ -50,8 +50,12 @@ jobs:
 
       - name: 交通灯（爻 → C → C 宿主）
         run: |
-          node bin/yao.js build examples/traffic/traffic.yao --header -o /tmp/traffic.c
-          gcc -std=c99 -Wall -Wextra -Werror /tmp/traffic.c examples/traffic/host.c -o /tmp/traffic
-          /tmp/traffic | tee /tmp/traffic.out
-          grep -q 'EW_GREEN' /tmp/traffic.out
-          grep -q '行人按钮' /tmp/traffic.out
+          # 生成的 traffic.h 与 host.c 必须同目录：host.c 用的是引号包含
+          mkdir -p /tmp/yj && cd /tmp/yj
+          node "$GITHUB_WORKSPACE/bin/yao.js" build \
+            "$GITHUB_WORKSPACE/examples/traffic/traffic.yao" --header -o traffic.c
+          cp "$GITHUB_WORKSPACE/examples/traffic/host.c" .
+          gcc -std=c99 -Wall -Wextra -Werror traffic.c host.c -o traffic
+          ./traffic | tee out.txt
+          grep -q 'EW_GREEN' out.txt
+          grep -q '行人按钮' out.txt
