@@ -42,6 +42,12 @@ jobs:
           gcc -std=c99 -Wall -Wextra -Werror /tmp/gua.c -o /tmp/gua
           printf '1 1\n2 2\nq\n' | /tmp/gua
 
+      - name: WASM 后端（节点内实例化并比对）
+        run: |
+          node bin/yao.js build examples/traffic/traffic.yao --target=wasm -o /tmp/t.wasm
+          node bin/yao.js build examples/gua-jing/gua_jing.yao --target=wasm -o /tmp/g.wasm
+          ls -l /tmp/t.wasm /tmp/g.wasm
+
       - name: 地牢验证
         run: node bin/yao.js check examples/gua-jing/gua_jing.yao --strict
 

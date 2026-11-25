@@ -263,6 +263,7 @@ src/parse.js            机器文法：机 / 事 / 态 / 转 / 起
 src/ir.js               IR 与静态检查
 src/interp.js           IR 解释器
 src/codegen-c.js        C99 后端
+src/codegen-wasm.js     WASM 后端（部分求值查表）
 src/validate.js         验证器：穷举可达图、死态、强连通、直径
 src/divine.js           占：筮 / 七分支断 / 爻题 / 覆盖检查
 src/game.js             爻阵游戏壳：关卡、BFS 最优步数
@@ -468,7 +469,7 @@ gcc -std=c99 -Wall -Wextra -Werror traffic.c host.c -o traffic
 | M4 | `合` + `占` 标准库 + 辞库 450 条 | ✅ 完成（辞文待校对） |
 | M5 | **C 后端真编译验证 + 轨迹等价 + CI + 爻阵游戏** | ✅ 完成 |
 | M6 | 网页 playground（单文件 HTML，无需后端） | ✅ 完成 |
-| M7 | WASM 后端（编译到 .wasm） | 计划中 |
+| M7 | 组 多组件机器 + WASM 后端 | ✅ 完成 |
 
 > **C 后端已通过真编译。** 生成的 C 由 `gcc -std=c99 -Wall -Wextra -Werror` 零警告编译，
 > 并与解释器逐事件比对轨迹（`tests/c-equivalence.test.js`，4 组用例）。

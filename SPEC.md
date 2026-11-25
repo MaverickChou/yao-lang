@@ -661,7 +661,8 @@ void    yao_guan(uint16_t state);           /* @观：观察 */
 | 机器文法：`机` `事` `态` `转` `起` | `src/parse.js` |
 | 静态检查：重名 / 重本卦 / 非确定转移 / 未声明名字 | `src/ir.js` |
 | IR 解释器（事件循环、轨迹） | `src/interp.js` |
-| C99 后端（`yao build`，含可选 `main`） | `src/codegen-c.js` |
+| C99 后端（`yao build`，含可选 `main` 与 `--header`） | `src/codegen-c.js` |
+| WASM 后端（`--target=wasm`，部分求值查表） | `src/codegen-wasm.js` |
 | 验证器（`yao check`：可达 / 死态 / 未定义转移 / 强连通 / 直径） | `src/validate.js` |
 | `合` 表达式（转移目标里的按值分发） | `src/parse.js` / `src/evalast.js` |
 | `占` 模块（筮 / 七分支断 / 爻题 / 覆盖检查） | `src/divine.js` |

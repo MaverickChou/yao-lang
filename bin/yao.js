@@ -21,6 +21,7 @@ import { parse } from '../src/parse.js';
 import { buildIr } from '../src/ir.js';
 import { Machine, trace } from '../src/interp.js';
 import { emitC, emitHeader } from '../src/codegen-c.js';
+import { emitWasm } from '../src/codegen-wasm.js';
 import { analyze } from '../src/validate.js';
 import { cast, judge, loadCorpus, coverage, yaoTitle } from '../src/divine.js';
 import { LEVELS, makeStepper, par, flippedLines } from '../src/game.js';
@@ -29,7 +30,7 @@ import { LEVELS, makeStepper, par, flippedLines } from '../src/game.js';
 const rawArgs = process.argv.slice(2);
 const flags = new Map();
 const args = [];
-const VALUE_FLAGS = new Set(['seed', 'o', 'machine', '法']);
+const VALUE_FLAGS = new Set(['seed', 'o', 'machine', '法', 'target']);
 
 for (let i = 0; i < rawArgs.length; i++) {
   const a = rawArgs[i];
@@ -390,6 +391,19 @@ function cmdBuild() {
   const out =
     flags.get('o') ??
     join(dirname(file), basename(file).replace(/\.yao$/, '') + '.c');
+  if (flags.get('target') === 'wasm') {
+    const wasmOut =
+      flags.get('o') ??
+      join(dirname(file), basename(file).replace(/\.yao$/, '') + '.wasm');
+    const { bytes, meta } = emitWasm(ir);
+    writeFileSync(wasmOut, bytes);
+    console.log(`已生成 ${wasmOut}`);
+    console.log(
+      c.dim(`  ${(bytes.length / 1024).toFixed(1)} KB，转移表 ${meta.states} × ${meta.cols} 列`)
+    );
+    return;
+  }
+
   const code = emitC(ir, { emitMain: flags.has('main') });
   const hdr = flags.has('header') ? emitHeader(ir) : null;
 
