@@ -152,15 +152,17 @@ python tools/gen_hexagrams.py --check
 
 ## 快速开始
 
-需要 Node.js ≥ 20。当前是 M1：核心代数 + 词法器 + 表达式求值 + REPL，
-**还没有编译器**（M2 才开始生成 C）。
+需要 Node.js ≥ 20，无其他依赖。
+
+**当前状态**：语言、验证器、C99 后端、WASM 后端、占、两个示例程序都已完成。
+唯一的实质缺口是辞库尚未人工校对（见页首警示）。
 
 Windows 直接双击 `yao.cmd`，或在终端里：
 
 ```bat
 yao                  :: 进入 REPL
 yao cast             :: 掷金钱卦起一卦
-yao test             :: 自检
+yao game             :: 爻阵，六关解谜
 ```
 
 PowerShell：
@@ -179,7 +181,7 @@ node bin/yao.js cast --seed=42
 node bin/yao.js eval "互(既济)"
 node bin/yao.js info 既济/初上
 node bin/yao.js table        # 64 卦全表
-node --test                  # 70 项测试（古典恒等式 + 一致性用例）
+node --test                  # 跑全部测试（古典恒等式、C/WASM 轨迹等价）
 ```
 
 REPL 里可以直接写：
@@ -269,7 +271,7 @@ src/divine.js           占：筮 / 七分支断 / 爻题 / 覆盖检查
 src/game.js             爻阵游戏壳：关卡、BFS 最优步数
 src/cc.js               C 编译器探测与调用
 bin/yao.js              CLI 与 REPL
-tests/                  132 项测试（含 C 编译运行比对）
+tests/                  测试：古典恒等式、C/WASM 轨迹等价、辞库覆盖
 examples/gua-jing/      六十四卦地牢（状态机 demo）
 docs/index.html         网页版（单文件，由 tools/build_web.mjs 生成）
 examples/yao-zhen/      爻阵（解谜游戏）
