@@ -272,6 +272,8 @@ tests/                  132 项测试（含 C 编译运行比对）
 examples/gua-jing/      六十四卦地牢（状态机 demo）
 docs/index.html         网页版（单文件，由 tools/build_web.mjs 生成）
 examples/yao-zhen/      爻阵（解谜游戏）
+examples/traffic/       交通灯（爻 → C → C 宿主，真二进制）
+docs/DESIGN.md          设计决策记录：为什么这么定
 .github/workflows/ci.yml  CI：卦表校验 / 辞库 / 测试 / C 零警告编译
 ```
 
@@ -413,7 +415,42 @@ yao run examples/gua-jing/gua_jing.yao
 一条隐藏的性质：`错卦` 一步就能从 未济 走到 既济——因为 未济 与 既济 互为错卦。
 验证器跑完 4096 个可能状态后给出的实数：可达 512 个，64 个房间全通，未济 → 既济 只要 **1 步**（错卦），离起点最远的 乾 / 坤 是 **3 步**，全图直径 **4 步**。
 
+## 真软件：交通灯
+
+前两个都是 demo，这个是**编译成 C 之后链接进真实程序**的例子：
+状态机用爻写，宿主用 C 写，产出一个真二进制。
+
+```bash
+yao build traffic.yao -o traffic.c
+gcc -std=c99 -Wall -Wextra -Werror traffic.c host.c -o traffic
+./traffic
+```
+
+```
+  tick   phase      left   NS  EW
+    0   NS_GREEN     5    G   R
+    2   NS_YELLOW    1    Y   R    <- 行人按钮
+    4   ALL_RED      1    R   R
+    6   EW_GREEN     5    R   G
+```
+
+6 位被拆成两个字段：低 3 位是相位，高 3 位是**剩余秒数**。没有变量、没有计数器，
+倒计时就存在状态自己身上：
+
+```yao
+转 * 秒 -> 合 (本 >> 3) {
+  0 => 合 (本 & 7) {                 # 归零：按相位换灯
+    0 => 变(1 | (2 << 3), 0),
+    ...
+  },
+  _ => 变((本 & 7) | (((本 >> 3) - 1) << 3), 0)
+}
+```
+
+机器只知道一个 6 位数；「哪几位是灯」是宿主的解释。这是 SPEC §10 定下的分工。
+
 ## 路线图
+
 
 | 阶段 | 交付 | 状态 |
 |---|---|---|

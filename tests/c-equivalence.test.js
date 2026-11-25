@@ -26,6 +26,11 @@ const DUNGEON = readFileSync(
   'utf8'
 );
 
+const TRAFFIC = readFileSync(
+  new URL('../examples/traffic/traffic.yao', import.meta.url),
+  'utf8'
+);
+
 const TURNSTILE = `
 机 闸机 {
   事 投币
@@ -129,6 +134,11 @@ check('C 与解释器一致：合 分发', MATCHED, [
   ['走', 1],
   ['走', 3],
   ['走', 5],
+]);
+
+check('C 与解释器一致：交通灯（3+3 位域 + 嵌套合）', TRAFFIC, [
+  ['秒', 0], ['秒', 0], ['行人', 0], ['秒', 0], ['秒', 0], ['秒', 0],
+  ['秒', 0], ['秒', 0], ['秒', 0], ['行人', 0], ['秒', 0], ['秒', 0],
 ]);
 
 check('C 与解释器一致：地牢随机长走', DUNGEON, (() => {
