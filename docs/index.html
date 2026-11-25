@@ -1663,7 +1663,7 @@ class Machine {
     if (!rule) return { ok: false, from, to: from, reason: '此路不通' };
 
     if (rule.param && (arg < 1 || arg > 6)) {
-      return { ok: false, from, to: from, reason: `参数 ${arg} 越界（应为 1..6）` };
+      return { ok: false, from, to: from, reason: paramHint(event, rule.param, arg) };
     }
 
     let to;
@@ -1707,7 +1707,7 @@ class Machine {
       return { ok: false, from: snap, to: snap, reason: '此路不通' };
     }
     if (rule.param && (arg < 1 || arg > 6)) {
-      return { ok: false, from: snap, to: snap, reason: `参数 ${arg} 越界（应为 1..6）` };
+      return { ok: false, from: snap, to: snap, reason: paramHint(event, rule.param, arg) };
     }
 
     let to;
@@ -1774,6 +1774,17 @@ function trace(ir, script) {
 }
 
 
+/**
+ * 参数不对时给出**可照抄的写法**，而不是只报越界。
+ * 起因：示例里写 `运算符` 而它需要 `运算符:1`，报错只说「参数 0 越界」，
+ * 读者不知道要补冒号。
+ */
+function paramHint(event, paramName, arg) {
+  if (arg === 0) {
+    return `事件 "${event}" 需要参数（${paramName}），写成 "${event}:1"`;
+  }
+  return `事件 "${event}" 的参数 ${arg} 越界，应为 1..6`;
+}
 
 /* ───────── game.js ───────── */
 /**
