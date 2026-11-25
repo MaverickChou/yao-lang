@@ -1,8 +1,8 @@
 name: Pages
 
+# 可选方案。默认部署走「分支部署」：Settings → Pages → Deploy from a branch → main / /web
+# 只有当你把 Pages 的 Source 改成「GitHub Actions」时，才需要手动跑这个工作流。
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
