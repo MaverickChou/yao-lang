@@ -1,7 +1,7 @@
 /*
  * 交通灯 · C 宿主
  *
- * 状态机由爻编译（traffic.yao → traffic.c），这里只做两件事：
+ * 状态机由爻编译（traffic.yao → traffic.c + traffic.h），这里只做两件事：
  *   1. 按秒驱动机器
  *   2. 把 6 位状态解码成灯的亮灭
  *
@@ -9,21 +9,17 @@
  * 这正是 SPEC §10 的分工：状态机纯函数，宿主负责一切 I/O。
  *
  * 构建：
- *   yao build traffic.yao -o traffic.c
+ *   yao build traffic.yao --header -o traffic.c
  *   gcc -std=c99 -Wall -Wextra -Werror traffic.c host.c -o traffic
  */
 
-#include <stdint.h>
 #include <stdio.h>
 
-/* 生成文件对外只暴露这三个。没有 .h，手工声明——这是当前的一个粗口。 */
-void     yao_init(uint16_t *s);
-int      yao_step(uint16_t *s, uint16_t ev, uint8_t p0);
-uint16_t yao_state(uint16_t s);
+#include "traffic.h"   /* 由 yao build --header 生成 */
 
-/* 与生成文件里的 EV_0 / EV_1 对应（按 `事` 的声明顺序） */
-#define EV_SECOND 1u
-#define EV_WALK   2u
+/* 事件号来自生成的头文件，这里只起可读的名字 */
+#define EV_SECOND EV_0   /* 秒 */
+#define EV_WALK   EV_1   /* 行人 */
 
 static const char *PHASE_NAME[] = {
   "NS_GREEN", "NS_YELLOW", "ALL_RED", "EW_GREEN", "EW_YELLOW",

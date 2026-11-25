@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 爻 · C99 后端
  *
  * 生成物是一个纯函数式状态机：一个转移函数 + 一个 step 包装。
@@ -165,6 +165,47 @@ const FUNC_DEF = {
     "}",
   ].join("\n"),
 };
+
+/**
+ * 生成配套头文件。
+ *
+ * 没有它，宿主只能手工声明原型与事件常量 —— 那等于让调用方复述一遍生成物的约定。
+ * @param {object} ir
+ * @returns {string}
+ */
+export function emitHeader(ir) {
+  const lines = [];
+  lines.push('/* 由 yao 生成，请勿手工修改。 */');
+  lines.push(`/* machine: ${ir.name} */`);
+  lines.push('#ifndef YAO_GENERATED_H');
+  lines.push('#define YAO_GENERATED_H');
+  lines.push('');
+  lines.push('#include <stdint.h>');
+  lines.push('');
+  lines.push('#define YAO_NONE 0xFFFFu');
+  lines.push('#define YAO_BEN(s)  ((uint16_t)((s) & 0x3Fu))');
+  lines.push('#define YAO_DONG(s) ((uint16_t)(((s) >> 6) & 0x3Fu))');
+  lines.push('#define YAO_ZHI(s)  ((uint16_t)(YAO_BEN(s) ^ YAO_DONG(s)))');
+  lines.push('');
+  lines.push('/* 起始状态 */');
+  lines.push(`#define YAO_START ${hex(ir.start.value, 4)}  /* ${ir.start.name} */`);
+  lines.push('');
+  lines.push('/* 事件号：按 `事` 的声明顺序，从 1 开始 */');
+  ir.events.forEach((ev, i) => {
+    lines.push(`#define EV_${i} ${i + 1}u  /* ${ev.name}${ev.param ? '(' + ev.param + ')' : ''} */`);
+  });
+  lines.push(`#define YAO_EVENT_COUNT ${ir.events.length}u`);
+  lines.push('');
+  lines.push('/* 接口 */');
+  lines.push('void     yao_init(uint16_t *s);');
+  lines.push('uint16_t yao_state(uint16_t s);');
+  lines.push('');
+  lines.push('/* 返回 0 = 已转移，1 = 该事件在此态下无定义 */');
+  lines.push('int      yao_step(uint16_t *s, uint16_t ev, uint8_t p0);');
+  lines.push('');
+  lines.push('#endif /* YAO_GENERATED_H */');
+  return lines.join('\n') + '\n';
+}
 
 /**
  * @param {object} ir buildIr 的结果

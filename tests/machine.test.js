@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { parse } from '../src/parse.js';
 import { buildIr } from '../src/ir.js';
 import { Machine, trace } from '../src/interp.js';
-import { emitC } from '../src/codegen-c.js';
+import { emitC, emitHeader } from '../src/codegen-c.js';
 import { BY_NAME, ben, dong, zhi } from '../src/core.js';
 
 const id = (n) => BY_NAME.get(n).id;
@@ -22,6 +22,11 @@ const TURNSTILE = `
   起 闲
 }
 `;
+
+const TRAFFIC_SRC = readFileSync(
+  new URL('../examples/traffic/traffic.yao', import.meta.url),
+  'utf8'
+);
 
 const DUNGEON = readFileSync(
   new URL('../examples/gua-jing/gua_jing.yao', import.meta.url),
@@ -211,8 +216,7 @@ test('C 后端：地牢生成物结构完整', () => {
   assert.ok(!c.includes('RUNTIME'), '不该残留占位符');
 });
 
-test('C 后端：只用到的运行时函数才被生成', () => {
-  const src = `
+test('C 后端：只用到的运行时函数才被生成', () => {  const src = `
 机 最小 {
   事 走
   态 甲 = 乾
@@ -223,4 +227,34 @@ test('C 后端：只用到的运行时函数才被生成', () => {
   const c = emitC(buildIr(parse(src)));
   assert.ok(!c.includes('yao_cuo'), '没用到 错 就不该生成 yao_cuo');
   assert.ok(!c.includes('yao_hu'), '没用到 互 就不该生成 yao_hu');
+});
+
+// ---------------------------------------------------------------- 头文件
+
+test('C 后端：--header 产出的头文件与 .c 一致', () => {
+  const ir = buildIr(parse(TURNSTILE));
+  const c = emitC(ir);
+  const h = emitHeader(ir);
+
+  assert.match(h, /#ifndef YAO_GENERATED_H/);
+  assert.match(h, /#define YAO_START 0x0000u\s+\/\* 闲 \*\//);
+  assert.match(h, /#define EV_0 1u/);
+  assert.match(h, /#define EV_1 2u/);
+  assert.match(h, /#define YAO_EVENT_COUNT 2u/);
+  assert.match(h, /int\s+yao_step\(uint16_t \*s, uint16_t ev, uint8_t p0\);/);
+
+  // 头文件里的起始态必须与 .c 里的相同，否则宿主和机器各说各话
+  const startC = /#define YAO_START (0x[0-9A-F]+u)/.exec(c)[1];
+  const startH = /#define YAO_START (0x[0-9A-F]+u)/.exec(h)[1];
+  assert.equal(startH, startC);
+
+  // 事件号数量必须与 .c 的 dispatch 一致
+  const evCount = (c.match(/case EV_\d+:/g) || []).length;
+  assert.equal(evCount, ir.events.length);
+});
+
+test('C 后端：交通灯头文件含两个事件', () => {
+  const h = emitHeader(buildIr(parse(TRAFFIC_SRC)));
+  assert.match(h, /#define EV_0 1u\s+\/\* 秒 \*\//);
+  assert.match(h, /#define EV_1 2u\s+\/\* 行人 \*\//);
 });

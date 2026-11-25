@@ -20,7 +20,7 @@ import { lex, LexError } from '../src/lex.js';
 import { parse } from '../src/parse.js';
 import { buildIr } from '../src/ir.js';
 import { Machine, trace } from '../src/interp.js';
-import { emitC } from '../src/codegen-c.js';
+import { emitC, emitHeader } from '../src/codegen-c.js';
 import { analyze } from '../src/validate.js';
 import { cast, judge, loadCorpus, coverage, yaoTitle } from '../src/divine.js';
 import { LEVELS, makeStepper, par, flippedLines } from '../src/game.js';
@@ -234,6 +234,7 @@ function usage() {
   yao trace <文件.yao> 事件…  打印状态轨迹，如： yao trace m.yao 行:1 错卦
   yao build <文件.yao>      生成 C99
       --main               附带一个极简命令行宿主
+      --header             同时生成配套 .h
       -o <输出.c>           输出路径
 
 占（M4）
@@ -389,8 +390,10 @@ function cmdBuild() {
     flags.get('o') ??
     join(dirname(file), basename(file).replace(/\.yao$/, '') + '.c');
   const code = emitC(ir, { emitMain: flags.has('main') });
+  const hdr = flags.has('header') ? emitHeader(ir) : null;
 
   writeFileSync(out, code, 'utf8');
+  if (hdr) writeFileSync(out.replace(/\.c$/, '.h'), hdr, 'utf8');
   console.log(`已生成 ${out}`);
   console.log(c.dim(`  ${ir.states.size} 态 / ${ir.events.length} 事件 / ${ir.rules.length} 规则`));
 }

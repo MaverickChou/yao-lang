@@ -50,7 +50,7 @@ jobs:
 
       - name: 交通灯（爻 → C → C 宿主）
         run: |
-          node bin/yao.js build examples/traffic/traffic.yao -o /tmp/traffic.c
+          node bin/yao.js build examples/traffic/traffic.yao --header -o /tmp/traffic.c
           gcc -std=c99 -Wall -Wextra -Werror /tmp/traffic.c examples/traffic/host.c -o /tmp/traffic
           /tmp/traffic | tee /tmp/traffic.out
           grep -q 'EW_GREEN' /tmp/traffic.out

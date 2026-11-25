@@ -299,7 +299,11 @@ yao check 闸机.yao            # 验证：可达性 / 死态 / 未定义转移 
 yao run  闸机.yao            # 交互运行
 yao trace 闸机.yao 投币 通过   # 打印状态轨迹
 yao build 闸机.yao --main -o 闸机.c
+yao build 闸机.yao --header -o 闸机.c   # 同时生成 闸机.h，给 C 宿主用
 ```
+
+生成的 `.h` 里是 `yao_init` / `yao_step` / `yao_state` 的原型、`EV_i` 事件号与起始态。
+宿主直接 `#include`，不用复述任何约定（见 SPEC §10.2）。
 
 `yao check` 会把 4096 个可能状态全部走一遍：
 
@@ -421,7 +425,7 @@ yao run examples/gua-jing/gua_jing.yao
 状态机用爻写，宿主用 C 写，产出一个真二进制。
 
 ```bash
-yao build traffic.yao -o traffic.c
+yao build traffic.yao --header -o traffic.c
 gcc -std=c99 -Wall -Wextra -Werror traffic.c host.c -o traffic
 ./traffic
 ```

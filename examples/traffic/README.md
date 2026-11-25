@@ -3,7 +3,7 @@
 第一个**真的编译成 C 并链接成二进制**的程序：状态机用爻写，宿主用 C 写。
 
 ```bash
-yao build traffic.yao -o traffic.c
+yao build traffic.yao --header -o traffic.c
 gcc -std=c99 -Wall -Wextra -Werror traffic.c host.c -o traffic
 ./traffic
 ```
@@ -63,9 +63,9 @@ const char *ew = phase == 3 ? "G" : phase == 4 ? "Y" : "R";
 
 ## 这个 demo **没有**证明什么
 
-SPEC §10 里那四个端口（`颐` / `兑` / `需` / `观`）**没有用到**，因为
-`@` 效应目前只做了词法识别，尚未接入执行。这个 demo 走的是
-`yao_init` / `yao_step` / `yao_state` 三个函数的嵌入式路径。
+这个 demo 走的是 `yao_init` / `yao_step` / `yao_state` 的纯函数路径，
+机器不回调宿主。早期 SPEC 里设计过四个回调端口（`颐` / `兑` / `需` / `观`），
+**已在新版 SPEC §10 中降级为未采用方案**——理由见那一节。
 
-另外，生成的 C 没有配套 `.h`，`host.c` 里的函数原型是手工声明的——
-这是当前的一个粗口，M7 之外应该补上。
+配套的 `.h` 由 `--header` 一并生成，`host.c` 直接 `#include "traffic.h"`，
+不再手工声明原型与事件号。
