@@ -136,6 +136,9 @@ function checkVars(ast, allowed, eventName) {
       checkVars(ast.subject, allowed, eventName);
       for (const arm of ast.arms) checkVars(arm.body, allowed, eventName);
       return;
+    case 'block':
+      for (const e of ast.effects) checkVars(e, allowed, eventName);
+      return checkVars(ast.target, allowed, eventName);
     case 'if':
       checkVars(ast.cond, allowed, eventName);
       checkVars(ast.then, allowed, eventName);

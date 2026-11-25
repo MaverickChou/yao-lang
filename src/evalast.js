@@ -76,6 +76,15 @@ export function evalAst(ast, env = {}) {
       return evalAst(c !== 0 ? ast.then : ast.otherwise, env);
     }
 
+    case 'block': {
+      // 观察性效应：只把值交给 sink，绝不回流到目标表达式
+      for (const eff of ast.effects) {
+        const v = evalAst(eff, env);
+        if (typeof env.sink === 'function') env.sink(SIX(v));
+      }
+      return evalAst(ast.target, env);
+    }
+
     case 'match': {
       const v = SIX(evalAst(ast.subject, env));
       for (const arm of ast.arms) {

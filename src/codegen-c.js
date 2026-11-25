@@ -209,6 +209,13 @@ export function emitHeader(ir) {
   });
   lines.push(`#define YAO_EVENT_COUNT ${ir.events.length}u`);
   lines.push('');
+
+  if (ir.rules.some((r) => r.target.t === 'block')) {
+    lines.push('/* 输出汇：宿主可赋值；为空指针时什么也不做。它不参与状态计算。 */');
+    lines.push('extern void (*yao_sink)(uint16_t);');
+    lines.push('');
+  }
+
   lines.push('/* 接口 */');
   lines.push('void     yao_init(uint16_t *s);');
   lines.push('uint16_t yao_state(uint16_t s);');
@@ -240,6 +247,20 @@ export function emitC(ir, opts = {}) {
   // 先走一遍表达式，收集用到的运行时函数
   const body = [];
   let evIndex = 0;
+  let usesSink = false;
+
+  /** 一条规则体：先执行 印 语句，再 return 目标 */
+  const emitRule = (rule, ctx) => {
+    const t = rule.target;
+    if (t.t !== 'block') return `return ${emit(t, ctx).code};`;
+
+    const pre = t.effects
+      .map((e) => `      if (yao_sink) yao_sink(${emit(e, ctx).code});`)
+      .join('\n');
+    usesSink = true;
+    return `${pre}\n      return ${emit(t.target, ctx).code};`;
+  };
+
   for (const ev of ir.events) {
     const g = groups.get(ev.name);
     const ctx = ctxFor(ev.param);
@@ -247,20 +268,18 @@ export function emitC(ir, opts = {}) {
 
     const cases = [];
     for (const [b, rule] of g.specific) {
-      cases.push(
-        `    case ${hex(b, 2)}:  /* ${nameOf(b)} */\n      return ${emit(rule.target, ctx).code};`
-      );
+      cases.push(`    case ${hex(b, 2)}:  /* ${nameOf(b)} */\n${emitRule(rule, ctx)}`);
     }
 
     const hasWildcard = !!g.wildcard;
-    const wildcardCode = hasWildcard ? emit(g.wildcard.target, ctx).code : 'YAO_NONE';
+    const wildcardCode = hasWildcard ? emitRule(g.wildcard, ctx) : 'return YAO_NONE;';
 
     if (cases.length === 0) {
-      // 没有态特化规则：直接返回通配目标，生成物平铺直叙
+      // 没有态特化规则：直接执行通配目标，生成物平铺直叙
       body.push(
         `  case ${evName}: {  /* ${ev.name}${ev.param ? '(' + ev.param + ')' : ''} */\n` +
           (ev.param ? '' : '    (void)p0;\n') +
-          `    return ${wildcardCode};\n` +
+          `    ${wildcardCode}\n` +
           '  }'
       );
     } else {
@@ -269,7 +288,7 @@ export function emitC(ir, opts = {}) {
           (ev.param ? '' : `    (void)p0;\n`) +
           `    switch (YAO_BEN(s)) {\n` +
           cases.join('\n') + '\n' +
-          `    default: return ${wildcardCode};\n` +
+          `    default: ${wildcardCode}\n` +
           `    }\n` +
           `  }`
       );
@@ -302,6 +321,12 @@ export function emitC(ir, opts = {}) {
   lines.push(`#define YAO_START ${hex(ir.start.value, 4)}  /* ${ir.start.name} */`);
   lines.push('');
 
+  if (usesSink) {
+    lines.push('/* 输出汇：宿主可赋值；为空指针时什么也不做。它不参与状态计算。 */');
+    lines.push('void (*yao_sink)(uint16_t) = 0;');
+    lines.push('');
+  }
+
   if (usedFuncs.size) {
     lines.push('/* 运行时 */');
     for (const k of usedFuncs) lines.push(FUNC_DEF[k]);
@@ -327,7 +352,17 @@ export function emitC(ir, opts = {}) {
   lines.push('  return 0;');
   lines.push('}');
 
-  if (opts.emitMain) lines.push(MAIN.replace(/__GUARD__/g, opts.guard ?? 'yao_main'));
+  if (opts.emitMain) {
+    const sinkDef = usesSink
+      ? 'static void yao_main_sink(uint16_t v) { printf("emit %u\\n", (unsigned)v); }'
+      : '';
+    const sinkInit = usesSink ? 'yao_sink = yao_main_sink;' : '';
+    lines.push(
+      MAIN.replace(/__GUARD__/g, opts.guard ?? 'yao_main')
+        .replace('__SINK_DEF__', sinkDef)
+        .replace('__SINK_INIT__', sinkInit)
+    );
+  }
 
   return lines.join('\n') + '\n';
 }
@@ -336,6 +371,8 @@ const MAIN = `
 /* ---- 可选：极简命令行宿主（纯 ASCII，不依赖字体） ---- */
 #include <stdio.h>
 #include <stdlib.h>
+
+__SINK_DEF__
 
 static void print_state(uint16_t s) {
   uint16_t b = YAO_BEN(s);
@@ -349,6 +386,7 @@ static void print_state(uint16_t s) {
 int main(void) {
   uint16_t s;
   char line[64];
+  __SINK_INIT__
   yao_init(&s);
   print_state(s);
   while (fgets(line, sizeof line, stdin)) {

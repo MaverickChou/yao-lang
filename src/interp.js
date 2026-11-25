@@ -12,8 +12,9 @@ import { buildIr, groupRules } from './ir.js';
 export const NO_TRANSITION = 0xffff;
 
 export class Machine {
-  constructor(ir) {
+  constructor(ir, opts = {}) {
     this.ir = ir;
+    this.sink = typeof opts.sink === 'function' ? opts.sink : null;
     this.groups = groupRules(ir);
     this.state = ir.start.value;
     this.stepCount = 0;
@@ -46,6 +47,7 @@ export class Machine {
         state: from,
         params: rule.param ? { [rule.param]: arg } : {},
         consts: this.ir.consts,
+        sink: this.sink,
       });
     } catch (err) {
       if (err instanceof EvalAstError) {

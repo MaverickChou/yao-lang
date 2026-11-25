@@ -659,6 +659,15 @@ function evalAst(ast, env = {}) {
       return evalAst(c !== 0 ? ast.then : ast.otherwise, env);
     }
 
+    case 'block': {
+      // 观察性效应：只把值交给 sink，绝不回流到目标表达式
+      for (const eff of ast.effects) {
+        const v = evalAst(eff, env);
+        if (typeof env.sink === 'function') env.sink(SIX(v));
+      }
+      return evalAst(ast.target, env);
+    }
+
     case 'match': {
       const v = SIX(evalAst(ast.subject, env));
       for (const arm of ast.arms) {
@@ -1100,8 +1109,29 @@ class Parser {
     }
     const event = this.parseName('事件名');
     this.expect('punct', '->');
-    const target = this.parseExpr();
+    const target = this.at('punct', '{') ? this.parseBlock() : this.parseExpr();
     return { from, event, target, tok };
+  }
+
+  /**
+   * 转移块：`{ 印 e ; 印 e ; 目标 }`
+   *
+   * 印 只能出现在语句位置且必须以分号结尾，因此它**不可能**产出一个值去影响目标。
+   * 这是「观察性效应」的语法级保证，不靠约定。
+   */
+  parseBlock() {
+    const tok = this.expect('punct', '{');
+    const effects = [];
+
+    while (this.at('kw', '印')) {
+      this.i++;
+      effects.push(this.parseExpr());
+      this.expect('punct', ';', '`印` 之后的分号');
+    }
+
+    const target = this.parseExpr();
+    this.expect('punct', '}');
+    return { t: 'block', effects, target, tok };
   }
 
   // -------------------------------------------------------------- 表达式
@@ -1371,6 +1401,9 @@ function checkVars(ast, allowed, eventName) {
       checkVars(ast.subject, allowed, eventName);
       for (const arm of ast.arms) checkVars(arm.body, allowed, eventName);
       return;
+    case 'block':
+      for (const e of ast.effects) checkVars(e, allowed, eventName);
+      return checkVars(ast.target, allowed, eventName);
     case 'if':
       checkVars(ast.cond, allowed, eventName);
       checkVars(ast.then, allowed, eventName);
@@ -1407,8 +1440,9 @@ function groupRules(ir) {
 const NO_TRANSITION = 0xffff;
 
 class Machine {
-  constructor(ir) {
+  constructor(ir, opts = {}) {
     this.ir = ir;
+    this.sink = typeof opts.sink === 'function' ? opts.sink : null;
     this.groups = groupRules(ir);
     this.state = ir.start.value;
     this.stepCount = 0;
@@ -1441,6 +1475,7 @@ class Machine {
         state: from,
         params: rule.param ? { [rule.param]: arg } : {},
         consts: this.ir.consts,
+        sink: this.sink,
       });
     } catch (err) {
       if (err instanceof EvalAstError) {

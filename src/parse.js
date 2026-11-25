@@ -131,8 +131,29 @@ class Parser {
     }
     const event = this.parseName('事件名');
     this.expect('punct', '->');
-    const target = this.parseExpr();
+    const target = this.at('punct', '{') ? this.parseBlock() : this.parseExpr();
     return { from, event, target, tok };
+  }
+
+  /**
+   * 转移块：`{ 印 e ; 印 e ; 目标 }`
+   *
+   * 印 只能出现在语句位置且必须以分号结尾，因此它**不可能**产出一个值去影响目标。
+   * 这是「观察性效应」的语法级保证，不靠约定。
+   */
+  parseBlock() {
+    const tok = this.expect('punct', '{');
+    const effects = [];
+
+    while (this.at('kw', '印')) {
+      this.i++;
+      effects.push(this.parseExpr());
+      this.expect('punct', ';', '`印` 之后的分号');
+    }
+
+    const target = this.parseExpr();
+    this.expect('punct', '}');
+    return { t: 'block', effects, target, tok };
   }
 
   // -------------------------------------------------------------- 表达式

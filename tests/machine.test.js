@@ -326,3 +326,72 @@ test('若 一支为变、一支为卦时，整体按变处理', () => {
   const m = machine(src);
   assert.equal(m.step('走').to, 63, '真分支返回 卦 63，应作为 变 使用');
 });
+
+// ---------------------------------------------------------------- 印
+
+const PRINTING = `
+机 印测 {
+  事 走(位 n)
+  态 甲 = 坤
+  转 * 走 -> {
+    印 1;
+    印 本 + 2;
+    变(本 ^ (1 << (n - 1)), 1 << (n - 1))
+  }
+  起 甲
+}`;
+
+test('印：输出进 sink，且不影响状态', () => {
+  const ir = buildIr(parse(PRINTING));
+
+  const withSink = [];
+  const m1 = new Machine(ir, { sink: (v) => withSink.push(v) });
+  m1.step('走', 1);
+
+  const m2 = new Machine(ir); // 没有 sink
+  const r2 = m2.step('走', 1);
+
+  assert.deepEqual(withSink, [1, 2], '两条 印 各输出一次');
+  assert.equal(m1.state, r2.to, '有没有 sink，状态轨迹必须一致');
+  assert.equal(r2.to, 1 | (1 << 6));
+});
+
+test('印：同一序列跑两遍，轨迹完全相同', () => {
+  const run = () => {
+    const out = [];
+    const m = new Machine(buildIr(parse(PRINTING)), { sink: (v) => out.push(v) });
+    const states = [m.state];
+    for (const n of [1, 2, 3]) {
+      m.step('走', n);
+      states.push(m.state);
+    }
+    return { states, out };
+  };
+  const a = run();
+  const b = run();
+  assert.deepEqual(a.states, b.states);
+  assert.deepEqual(a.out, b.out);
+});
+
+test('印：必须以分号结尾', () => {
+  const bad = `
+机 坏 {
+  事 走
+  态 甲 = 坤
+  转 * 走 -> { 印 1 变(本, 0) }
+  起 甲
+}`;
+  assert.throws(() => parse(bad), /分号/);
+});
+
+test('印：头文件声明输出汇', () => {
+  const h = emitHeader(buildIr(parse(PRINTING)));
+  assert.match(h, /extern void \(\*yao_sink\)\(uint16_t\);/);
+});
+
+test('没有 印 的机器不引入 yao_sink', () => {
+  const h = emitHeader(buildIr(parse(TURNSTILE)));
+  assert.ok(!h.includes('yao_sink'), '不该无端引入输出汇');
+  const c = emitC(buildIr(parse(TURNSTILE)));
+  assert.ok(!c.includes('yao_sink'));
+});
