@@ -28,13 +28,13 @@ jobs:
         run: node tools/build_web.mjs
 
       - name: 生成物应已入库
-        run: git diff --exit-code web/index.html
+        run: git diff --exit-code docs/index.html
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web
+          path: docs
 
   deploy:
     needs: build

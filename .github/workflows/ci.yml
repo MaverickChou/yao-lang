@@ -31,7 +31,7 @@ jobs:
           python tools/gen_yao_zhen.py
           python tools/build_corpus.py
           node tools/build_web.mjs
-          git diff --exit-code examples/ data/corpus.json web/index.html
+          git diff --exit-code examples/ data/corpus.json docs/index.html
 
       - name: 测试（含 C 轨迹等价）
         run: node --test

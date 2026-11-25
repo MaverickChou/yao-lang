@@ -136,7 +136,7 @@ export function buildHtml() {
 }
 
 function main() {
-  const outDir = join(ROOT, 'web');
+  const outDir = join(ROOT, 'docs');
   mkdirSync(outDir, { recursive: true });
 
   const html = buildHtml();
@@ -144,7 +144,7 @@ function main() {
   writeFileSync(outFile, html, 'utf8');
 
   const kb = (Buffer.byteLength(html, 'utf8') / 1024).toFixed(1);
-  console.log(`✓ web/index.html  ${kb} KB（单文件，可直接双击）`);
+  console.log(`✓ docs/index.html  ${kb} KB（单文件，可直接双击）`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

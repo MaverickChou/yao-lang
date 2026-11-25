@@ -233,10 +233,10 @@ REPL 里可以直接写：
 **https://maverickchou.github.io/yao-lang/**
 
 一个 90 KB 的单文件 HTML，语言内核（`src/*.js`）原样打包在里面——
-没有后端、没有 WASM、没有依赖。双击 `web/index.html` 也能离线运行。
+没有后端、没有 WASM、没有依赖。双击 `docs/index.html` 也能离线运行。
 
 ```bash
-node tools/build_web.mjs     # 重新生成 web/index.html
+node tools/build_web.mjs     # 重新生成 docs/index.html
 ```
 
 页面里有两件事：**爻阵**（六关解谜）和 **卦盘**（输入 `既济` / `987789` / `泰/初上`，
@@ -270,7 +270,7 @@ src/cc.js               C 编译器探测与调用
 bin/yao.js              CLI 与 REPL
 tests/                  132 项测试（含 C 编译运行比对）
 examples/gua-jing/      六十四卦地牢（状态机 demo）
-web/index.html          网页版（单文件，由 tools/build_web.mjs 生成）
+docs/index.html         网页版（单文件，由 tools/build_web.mjs 生成）
 examples/yao-zhen/      爻阵（解谜游戏）
 .github/workflows/ci.yml  CI：卦表校验 / 辞库 / 测试 / C 零警告编译
 ```
