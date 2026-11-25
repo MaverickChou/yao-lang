@@ -226,6 +226,26 @@ REPL 里可以直接写：
 
 ---
 
+## 网页版
+
+不想装 Node？直接玩：
+
+**https://maverickchou.github.io/yao-lang/**
+
+一个 90 KB 的单文件 HTML，语言内核（`src/*.js`）原样打包在里面——
+没有后端、没有 WASM、没有依赖。双击 `web/index.html` 也能离线运行。
+
+```bash
+node tools/build_web.mjs     # 重新生成 web/index.html
+```
+
+页面里有两件事：**爻阵**（六关解谜）和 **卦盘**（输入 `既济` / `987789` / `泰/初上`，
+看卦图、错综互、以及按七分支断出的辞）。
+
+打包器不只是字符串拼接：它会把两处 `node:fs` 的读取替换成内联数据，
+替换点找不到就**直接报错**，不允许静默产出一个只能在 Node 跑的包。
+`tests/web-bundle.test.js` 会把打包产物当模块 import 进来，真的建机器、真的走完六关。
+
 ## 仓库结构
 
 ```
@@ -250,6 +270,7 @@ src/cc.js               C 编译器探测与调用
 bin/yao.js              CLI 与 REPL
 tests/                  132 项测试（含 C 编译运行比对）
 examples/gua-jing/      六十四卦地牢（状态机 demo）
+web/index.html          网页版（单文件，由 tools/build_web.mjs 生成）
 examples/yao-zhen/      爻阵（解谜游戏）
 .github/workflows/ci.yml  CI：卦表校验 / 辞库 / 测试 / C 零警告编译
 ```
@@ -402,7 +423,8 @@ yao run examples/gua-jing/gua_jing.yao
 | M3 | 验证器：穷举可达图 / 死态 / 强连通 / 直径 | ✅ 完成 |
 | M4 | `合` + `占` 标准库 + 辞库 450 条 | ✅ 完成（辞文待校对） |
 | M5 | **C 后端真编译验证 + 轨迹等价 + CI + 爻阵游戏** | ✅ 完成 |
-| M6 | WASM playground | 计划中 |
+| M6 | 网页 playground（单文件 HTML，无需后端） | ✅ 完成 |
+| M7 | WASM 后端（编译到 .wasm） | 计划中 |
 
 > **C 后端已通过真编译。** 生成的 C 由 `gcc -std=c99 -Wall -Wextra -Werror` 零警告编译，
 > 并与解释器逐事件比对轨迹（`tests/c-equivalence.test.js`，4 组用例）。

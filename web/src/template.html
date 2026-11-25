@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>爻 · Yao —— 6 位状态机语言</title>
+<meta name="description" content="爻是一门把状态机编译成 C 的 6 位语言。六十四卦，正好是 6 个比特。">
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>爻 <span class="dim">Yao</span></h1>
+    <p class="tagline">一门把状态机编译成 C 的 6 位语言。六十四卦，正好是 6 个比特。</p>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="game" class="on">爻阵 · 玩</button>
+    <button data-tab="lookup">卦盘 · 查</button>
+    <button data-tab="about">说明</button>
+  </nav>
+
+  <section id="tab-game">
+    <div class="hud">
+      <div class="hud-row">
+        <span id="level" class="badge"></span>
+        <span id="target" class="badge"></span>
+      </div>
+      <div class="hud-row">
+        <span id="steps" class="dim"></span>
+        <span id="par" class="dim"></span>
+      </div>
+    </div>
+
+    <div class="board" id="board" aria-label="六爻"></div>
+
+    <div class="actions">
+      <button id="retry">重来本关</button>
+      <button id="hint">提示</button>
+    </div>
+
+    <p class="rule">按第 n 爻，<b>该爻与它相邻的爻一起翻转</b>。</p>
+    <div class="msg" id="msg"></div>
+  </section>
+
+  <section id="tab-lookup" hidden>
+    <input id="q" type="text" spellcheck="false" autocomplete="off"
+           placeholder="既济　987789　泰/初上　互(泰)　变数(既济/初上)">
+    <div id="lookup-out" class="out"></div>
+  </section>
+
+  <section id="tab-about" hidden>
+    <div class="about">
+      <p><b>爻</b>是一门 6 位语言。六十四卦不是装饰，是它的数值地基：一卦就是 6 个比特，
+        一爻就是一位，《周易》里所有的变换都能写成一行位运算。</p>
+
+      <table>
+        <tr><td>错（旁通）</td><td><code>x ^ 0b111111</code></td></tr>
+        <tr><td>综（反卦）</td><td>位反转</td></tr>
+        <tr><td>互（互卦）</td><td><code>((x&gt;&gt;1)&amp;7) | (((x&gt;&gt;2)&amp;7)&lt;&lt;3)</code></td></tr>
+        <tr><td>变（动爻）</td><td><code>本 ^ 动</code></td></tr>
+      </table>
+
+      <p>核心类型是 <code>变</code>：12 位，低 6 位是本卦，高 6 位是动爻掩码，
+        之卦由两者导出 —— <code>本 ⊕ 动 ⊕ 之 = 0</code>。
+        所以占卜和普通计算共用一个类型、一套代数。</p>
+
+      <p>因为一台机器最多 4096 个状态，编译器可以<b>穷举验证</b>：
+        可达性、死态、未定义转移、强连通分量、图直径 —— 不需要抽象，不需要有界检验。</p>
+
+      <p class="dim">这个页面是单文件 HTML，语言内核原样打包在里面，没有后端。
+        完整项目见 GitHub 仓库。</p>
+    </div>
+  </section>
+
+  <footer>
+    <span class="dim">v0.1.0 · 132 项测试 · 辞库为草案，未逐字校对</span>
+  </footer>
+</main>
+<script type="module">
+/*__SCRIPT__*/
+</script>
+</body>
+</html>
