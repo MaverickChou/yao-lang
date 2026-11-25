@@ -60,8 +60,20 @@ export function evalAst(ast, env = {}) {
         case '^': return a ^ b;
         case '<<': return (a << b) & M;
         case '>>': return (a >> b) & M;
+        // 比较：结果为 1 / 0，不参与 6 位算术
+        case '==': return a === b ? 1 : 0;
+        case '!=': return a !== b ? 1 : 0;
+        case '<': return a < b ? 1 : 0;
+        case '>': return a > b ? 1 : 0;
+        case '<=': return a <= b ? 1 : 0;
+        case '>=': return a >= b ? 1 : 0;
         default: throw new EvalAstError(`未知运算符 "${ast.op}"`);
       }
+    }
+
+    case 'if': {
+      const c = SIX(evalAst(ast.cond, env));
+      return evalAst(c !== 0 ? ast.then : ast.otherwise, env);
     }
 
     case 'match': {

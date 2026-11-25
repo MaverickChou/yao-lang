@@ -24,6 +24,7 @@ export class ParseError extends Error {
 }
 
 const BIN_LEVELS = [
+  ['==', '!=', '<=', '>=', '<', '>'],
   ['|'],
   ['^'],
   ['&'],
@@ -185,6 +186,20 @@ class Parser {
     if (t.type === 'kw' && t.value === '变' && !(this.peek(1).type === 'punct' && this.peek(1).value === '(')) {
       this.i++;
       return { t: 'state', tok: t };
+    }
+
+    // 若 条件 { 甲 } 否则 { 乙 } —— 条件非零为真
+    if (t.type === 'kw' && t.value === '若') {
+      this.i++;
+      const cond = this.parseExpr();
+      this.expect('punct', '{');
+      const then = this.parseExpr();
+      this.expect('punct', '}');
+      this.expect('kw', '否则', '`否则`');
+      this.expect('punct', '{');
+      const otherwise = this.parseExpr();
+      this.expect('punct', '}');
+      return { t: 'if', cond, then, otherwise, tok: t };
     }
 
     // 合：按值分发

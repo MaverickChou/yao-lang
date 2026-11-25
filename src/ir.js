@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 爻 · 机器 IR 构建与静态检查
  *
  * 产出物是一个纯数据对象，解释器与 C 后端都只读它。
@@ -136,6 +136,10 @@ function checkVars(ast, allowed, eventName) {
       checkVars(ast.subject, allowed, eventName);
       for (const arm of ast.arms) checkVars(arm.body, allowed, eventName);
       return;
+    case 'if':
+      checkVars(ast.cond, allowed, eventName);
+      checkVars(ast.then, allowed, eventName);
+      return checkVars(ast.otherwise, allowed, eventName);
     default:
       throw new IrError(`未知表达式节点 "${ast.t}"`);
   }

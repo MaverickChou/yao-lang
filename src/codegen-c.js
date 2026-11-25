@@ -22,6 +22,8 @@ function hex(v, width) {
   return '0x' + v.toString(16).toUpperCase().padStart(width, '0') + 'u';
 }
 
+const CMP = new Set(['==', '!=', '<', '>', '<=', '>=']);
+
 const C_FUNCS = {
   错: 'yao_cuo', 综: 'yao_zong', 互: 'yao_hu',
   当位: 'yao_dangwei',
@@ -58,8 +60,19 @@ function emit(e, ctx) {
     case 'bin': {
       const a = six(e.l, ctx);
       const b = six(e.r, ctx);
+      if (CMP.has(e.op)) {
+        return { code: `(((${a}) ${e.op} (${b})) ? 1u : 0u)`, wide: false };
+      }
       const expr = `(${a} ${e.op} ${b})`;
       return { code: `(${expr} & ${MASK})`, wide: false };
+    }
+
+    case 'if': {
+      const c = six(e.cond, ctx);
+      const t = emit(e.then, ctx);
+      const f = emit(e.otherwise, ctx);
+      const wide = t.wide || f.wide;
+      return { code: `((${c}) != 0u ? ${t.code} : ${f.code})`, wide };
     }
 
     case 'call': {

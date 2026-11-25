@@ -643,8 +643,20 @@ function evalAst(ast, env = {}) {
         case '^': return a ^ b;
         case '<<': return (a << b) & M;
         case '>>': return (a >> b) & M;
+        // 比较：结果为 1 / 0，不参与 6 位算术
+        case '==': return a === b ? 1 : 0;
+        case '!=': return a !== b ? 1 : 0;
+        case '<': return a < b ? 1 : 0;
+        case '>': return a > b ? 1 : 0;
+        case '<=': return a <= b ? 1 : 0;
+        case '>=': return a >= b ? 1 : 0;
         default: throw new EvalAstError(`未知运算符 "${ast.op}"`);
       }
+    }
+
+    case 'if': {
+      const c = SIX(evalAst(ast.cond, env));
+      return evalAst(c !== 0 ? ast.then : ast.otherwise, env);
     }
 
     case 'match': {
@@ -735,7 +747,8 @@ const KEYWORDS = new Set([
 ]);
 
 const PUNCT = [
-  '<<', '>>', '->', '=>',
+  '<<', '>>', '<=', '>=', '==', '!=',
+  '->', '=>', '<', '>',
   '(', ')', '{', '}', ',', ';', ':', '=', '+', '-', '*', '/', '&', '|', '^', '~',
 ];
 
@@ -980,6 +993,7 @@ class ParseError extends Error {
 }
 
 const BIN_LEVELS = [
+  ['==', '!=', '<=', '>=', '<', '>'],
   ['|'],
   ['^'],
   ['&'],
@@ -1143,6 +1157,20 @@ class Parser {
       return { t: 'state', tok: t };
     }
 
+    // 若 条件 { 甲 } 否则 { 乙 } —— 条件非零为真
+    if (t.type === 'kw' && t.value === '若') {
+      this.i++;
+      const cond = this.parseExpr();
+      this.expect('punct', '{');
+      const then = this.parseExpr();
+      this.expect('punct', '}');
+      this.expect('kw', '否则', '`否则`');
+      this.expect('punct', '{');
+      const otherwise = this.parseExpr();
+      this.expect('punct', '}');
+      return { t: 'if', cond, then, otherwise, tok: t };
+    }
+
     // 合：按值分发
     if (t.type === 'kw' && t.value === '合') {
       this.i++;
@@ -1206,7 +1234,7 @@ function parse(src) {
 
 
 /* ───────── ir.js ───────── */
-﻿/**
+/**
  * 爻 · 机器 IR 构建与静态检查
  *
  * 产出物是一个纯数据对象，解释器与 C 后端都只读它。
@@ -1343,6 +1371,10 @@ function checkVars(ast, allowed, eventName) {
       checkVars(ast.subject, allowed, eventName);
       for (const arm of ast.arms) checkVars(arm.body, allowed, eventName);
       return;
+    case 'if':
+      checkVars(ast.cond, allowed, eventName);
+      checkVars(ast.then, allowed, eventName);
+      return checkVars(ast.otherwise, allowed, eventName);
     default:
       throw new IrError(`未知表达式节点 "${ast.t}"`);
   }
