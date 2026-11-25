@@ -11,6 +11,11 @@
  *   gcc -std=c99 -Wall -Wextra -Werror mqtt.c host.c -o mqtt            # POSIX
  */
 
+/* -std=c99 会让 glibc 隐藏 POSIX 声明，必须显式要求 */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#  define _POSIX_C_SOURCE 200809L
+#endif
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
