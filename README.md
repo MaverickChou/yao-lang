@@ -2,6 +2,13 @@
 
 **一门把状态机编译成 C 的 6 位语言。六十四卦，正好是 6 个比特。**
 
+> [!WARNING]
+> **辞库是草案。** `data/corpus.txt` 的 450 条卦辞爻辞（通行本）尚未逐字校对纸本，
+> 可能有错字或句读出入。结构已机器校验，文本没有。
+> 如果你要引用其中的辞文，请先自己核一遍，或参见
+> [data/corpus.NOTES.md](data/corpus.NOTES.md)。
+> 校对方法是 `yao corpus --unverified` 挑一条，核完在 `data/corpus.verified.txt` 里签字。
+
 ```yao
 机 闸机 {
   事 投币
