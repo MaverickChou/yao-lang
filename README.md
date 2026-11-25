@@ -273,6 +273,7 @@ examples/gua-jing/      六十四卦地牢（状态机 demo）
 docs/index.html         网页版（单文件，由 tools/build_web.mjs 生成）
 examples/yao-zhen/      爻阵（解谜游戏）
 examples/traffic/       交通灯（爻 → C → C 宿主，真二进制）
+docs/GUIDE.md           使用手册（面向要用它的人）
 docs/DESIGN.md          设计决策记录：为什么这么定
 .github/workflows/ci.yml  CI：卦表校验 / 辞库 / 测试 / C 零警告编译
 ```
@@ -304,6 +305,8 @@ yao build 闸机.yao --header -o 闸机.c   # 同时生成 闸机.h，给 C 宿�
 
 生成的 `.h` 里是 `yao_init` / `yao_step` / `yao_state` 的原型、`EV_i` 事件号与起始态。
 宿主直接 `#include`，不用复述任何约定（见 SPEC §10.2）。
+
+完整语言参考、宿主写法、占与错误码，都在 **[docs/GUIDE.md](docs/GUIDE.md)**。
 
 `yao check` 会把 4096 个可能状态全部走一遍：
 
