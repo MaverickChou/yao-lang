@@ -9,6 +9,66 @@
 > [data/corpus.NOTES.md](data/corpus.NOTES.md)。
 > 校对方法是 `yao corpus --unverified` 挑一条，核完在 `data/corpus.verified.txt` 里签字。
 
+---
+
+## English
+
+**Yao (爻) is a 6-bit language that compiles state machines to C99.**
+
+The 64 hexagrams of the *I Ching* are exactly 6 bits. That is not a metaphor — it is the
+numeric foundation of the whole language:
+
+| classical | bits |
+|---|---|
+| hexagram | 6-bit word, 64 values |
+| line (爻) | 1 bit; bit 0 = bottom line |
+| lower / upper trigram | bits 0–2 / bits 3–5 |
+| 错 (invert) | `x ^ 0b111111` |
+| 综 (reverse) | bit reversal |
+| 互 (nuclear) | `((x>>1)&7) \| (((x>>2)&7)<<3)` |
+
+The core type is `变` — 12 bits: the current hexagram `本` plus a bitmask of moving lines
+`动`. The next state is derived, `之 = 本 ^ 动`, so divination and ordinary computation
+share one type and one algebra.
+
+```yao
+机 闸机 {
+  事 投币
+  事 通过
+  态 闲   = 坤
+  态 放行 = 复
+  转 闲   投币 -> 放行
+  转 放行 通过 -> 闲
+  起 闲
+}
+```
+
+```bash
+node bin/yao.js build 闸机.yao --main -o 闸机.c
+gcc -std=c99 -Wall -Wextra -Werror 闸机.c -o 闸机
+```
+
+No dependencies, no install step: the compiler is plain ESM and runs on Node ≥ 20.
+
+**Good for:** embedded state machines, protocol handshakes, device control, game logic.
+**Not for:** strings, heap allocation, general-purpose computing. The host language
+handles everything else; Yao only owns the part that is hardest to get right.
+
+Because a single machine has at most 4096 states, the compiler **exhaustively verifies**
+it: `yao check` reports reachability, dead states, undefined transitions, strongly
+connected components and graph diameter — no abstraction, no bounded model checking.
+
+Status: `v0.1.0`. 132 tests. The C backend is verified by actually compiling the generated
+code and comparing its state trace with the interpreter's. Known gap: the 450 classical
+text entries are a **draft transcription, not proofread** — see
+[`data/corpus.NOTES.md`](data/corpus.NOTES.md).
+
+License: MIT OR Apache-2.0.
+
+---
+
+## 先看一个程序
+
 ```yao
 机 闸机 {
   事 投币
@@ -25,8 +85,12 @@
 ```
 
 ```
-$ yao build 闸机.yao --target=c99 -o gate
+$ node bin/yao.js build gate.yao --main -o gate.c
+$ gcc -std=c99 -Wall -Wextra -Werror gate.c -o gate
 $ ./gate
+state=0000  ben=000000  dong=0  zhi=00
+1
+state=0001  ben=000001  dong=0  zhi=01
 ```
 
 ---
